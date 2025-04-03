@@ -3,6 +3,7 @@ from flask import render_template
 from flask import request
 from flask import redirect
 import user_management as dbHandler
+from enum import Enum
 
 # Code snippet for logging a message
 # app.logger.critical("message")
@@ -32,10 +33,63 @@ def sanitiseInput(input):
             output.append(inputList[i])
     return "".join(output)
 
+class returnErorr(Enum):
+    hasNoError = 0
+    noLowerCase = 1
+    noUpperCase = 2
+    noSpecialCase = 3
+    continuousLetters = 4
+ 
+def checkInput(password):
 
+    inputList = list(password)
+    lastId = False
+    
+    hasLowerCase = False
+    hasUpperCase = False
+    hasSpecialCharacter = False
+    repeatedCharacter = False
+    repeat = 0
+    
+    for i in range(0, len(password)):
+        
+        upperCharacter = False
+        lowerCharacter = False
+        
+        tempID = inputList[i]
+        ## checking for lowercase
+        if (97 <= ord(tempID) <= 122):
+            hasLowerCase = True
+            lowerCharacter = True
 
+        ## checking for uppercase
+        if (65 <= ord(tempID) <= 90):
+            hasUpperCase = True
+            upperCharacter = True
+            
+        ## if its neither upper or lowercase than it must be a special chararcter
+        if not (upperCharacter or lowerCharacter):
+            hasSpecialCharacter = True
 
+        if lastId == tempID:
+            repeat += 1
+            if repeat > 2:
+                return returnErorr.continuousLetters
+        else:
+            repeat = 0
 
+        lastId = tempID
+
+    if (not hasLowerCase):
+        return returnErorr.noLowerCase
+    
+    if (not hasUpperCase):
+        return returnErorr.noUpperCase
+    
+    if (not hasSpecialCharacter):
+        return returnErorr.noSpecialCase
+    
+    return returnErorr.hasNoError
 
 @app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 def addFeedback():
