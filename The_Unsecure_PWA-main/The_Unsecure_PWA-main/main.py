@@ -9,6 +9,33 @@ import user_management as dbHandler
 
 app = Flask(__name__)
 
+pecialCharacterunordedMap = dict()
+specialCharacterunordedMap = {
+'"' : "&quot;", 
+"'" : "&apos;", 
+"&" : "&amp;",
+"<" : "&lt;", 
+">" : "&gt;",
+"-" : "&#45;"}
+
+def sanitiseInput(input):
+    
+    inputList = list(str(input))
+    output = list()
+
+    for i in range(0, len(input)):
+        tempValue = specialCharacterunordedMap.get(inputList[i], "0")
+
+        if tempValue != '0':
+            output.append(tempValue)
+        else: 
+            output.append(inputList[i])
+    return "".join(output)
+
+
+
+
+
 
 @app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 def addFeedback():
@@ -31,8 +58,8 @@ def signup():
         url = request.args.get("url", "")
         return redirect(url, code=302)
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
+        username = sanitiseInput(request.form["username"])
+        password = sanitiseInput(request.form["password"])
         DoB = request.form["dob"]
         dbHandler.insertUser(username, password, DoB)
         return render_template("/index.html")
@@ -47,8 +74,8 @@ def home():
         url = request.args.get("url", "")
         return redirect(url, code=302)
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
+        username = sanitiseInput(request.form["username"])
+        password = sanitiseInput(request.form["password"])
         isLoggedIn = dbHandler.retrieveUsers(username, password)
         if isLoggedIn:
             dbHandler.listFeedback()
