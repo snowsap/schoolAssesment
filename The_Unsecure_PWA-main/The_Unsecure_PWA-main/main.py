@@ -8,6 +8,7 @@ import time
 import asyncio
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.backends import default_backend
 
 
 #65537 is used specifically because it is secure and a simple prime (2^16 + 1) and key size 2084 = 2^11 
@@ -40,12 +41,6 @@ async def sanitiseInput(input):
         else: 
             output.append(inputList[i])
     return "".join(output)
-
-
-def decrypt(encryptedInfo):
-    return privateKey.decrypt( encryptedInfo, padding.OAEP( mgf=padding.MGF1( algorithm = hashes.SHA256() ), algorithm = hashes.SHA256(), label = False)
-                                   
-    )
 
 
 
@@ -110,8 +105,18 @@ async def checkInput(password):
     return returnerror.hasNoError
 
 @app.route("/PublicKey", methods=["GET"])
-async def getPublicKey():
-    return publicKey
+def getPublicKeyServer():
+    return publicKey.public_bytes()
+
+def decryptServer(encryptedInfo):
+    return privateKey.decrypt( encryptedInfo, padding.OAEP( mgf=padding.MGF1( algorithm = hashes.SHA256() ), algorithm = hashes.SHA256(), label = False))
+
+
+def encryptClient():
+    pass
+
+def encryptClient():
+    pass
 
 
 @app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
@@ -231,3 +236,5 @@ if __name__ == "__main__":
     app.config["TEMPLATES_AUTO_RELOAD"] = True
     app.config["SEND_FILE_MAX_AGE_async defAULT"] = 0
     app.run(debug=True, host="0.0.0.0", port=5000)
+
+
