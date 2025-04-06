@@ -1,9 +1,11 @@
-from flask import Flask
+from flask import Flask 
 from flask import render_template
 from flask import request
 from flask import redirect
 import user_management as dbHandler
 from enum import Enum
+import time
+import asyncio
 
 
 app = Flask(__name__)
@@ -17,7 +19,7 @@ specialCharacterunordedMap = {
 ">" : "&gt;",
 "-" : "&#45;"}
 
-def sanitiseInput(input):
+async def sanitiseInput(input):
     
     inputList = list(str(input))
     output = list()
@@ -40,7 +42,7 @@ class returnerror(Enum):
     noSpecialCase = 3
     continuousLetters = 4
  
-def checkInput(password):
+async def checkInput(password):
 
     print(password)
 
@@ -93,24 +95,45 @@ def checkInput(password):
     return returnerror.hasNoError
 
 @app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
-def addFeedback():
+async def addFeedback():
+    functionEndTime = round(time.time()) + 1
     if request.method == "GET" and request.args.get("url"):
         url = request.args.get("url", "")
+        
+        if (functionEndTime > time.time() ):
+                await asyncio.sleep(functionEndTime - time.time())
+                print(functionEndTime - time.time())        
         return redirect(url, code=302)
     if request.method == "POST":
         feedback = request.form["feedback"]
         dbHandler.insertFeedback(feedback)
         dbHandler.listFeedback()
+
+        if (functionEndTime > time.time() ):
+                await asyncio.sleep(functionEndTime - time.time())
+                print(functionEndTime - time.time())        
         return render_template("/success.html", state=True, value="Back")
     else:
         dbHandler.listFeedback()
+
+        if (functionEndTime > time.time() ):
+                await asyncio.sleep(functionEndTime - time.time())
+                print(functionEndTime - time.time())        
         return render_template("/success.html", state=True, value="Back")
 
 
 @app.route("/signup.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
-def signup():
+async def signup():
+
+    functionEndTime = round(time.time()) + 1
+
     if request.method == "GET" and request.args.get("url"):
         url = request.args.get("url", "")
+
+        if (functionEndTime > time.time() ):
+                await asyncio.sleep(functionEndTime - time.time())
+                print(functionEndTime - time.time())            
+        
         return redirect(url, code=302)
     if request.method == "POST":
         username = sanitiseInput(request.form["username"])
@@ -121,16 +144,31 @@ def signup():
         password = sanitiseInput(rawpassword)
         DoB = request.form["dob"]
         dbHandler.insertUser(username, password, DoB)
+
+        if (functionEndTime > time.time() ):
+                await asyncio.sleep(functionEndTime - time.time())
+                print(functionEndTime - time.time())
         return render_template("/index.html")
     else:
+
+        if (functionEndTime > time.time() ):
+                await asyncio.sleep(functionEndTime - time.time())
+                print(functionEndTime - time.time())
         return render_template("/signup.html")
 
 
 @app.route("/index.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 @app.route("/", methods=["POST", "GET"])
-def home():
+async def home():
+
+    functionEndTime = round(time.time()) + 1
+
     if request.method == "GET" and request.args.get("url"):
         url = request.args.get("url", "")
+
+        if (functionEndTime > time.time() ):
+                await asyncio.sleep(functionEndTime - time.time())
+                print(functionEndTime - time.time())
         return redirect(url, code=302)
     if request.method == "POST":
         username = sanitiseInput(request.form["username"])
@@ -138,23 +176,41 @@ def home():
         isLoggedIn = dbHandler.retrieveUsers(username, password)
         if isLoggedIn:
             dbHandler.listFeedback()
+
+            if (functionEndTime > time.time() ):
+                await asyncio.sleep(functionEndTime - time.time())    
+            
             return render_template("/success.html", value=username, state=isLoggedIn)
         else:
+
+            if (functionEndTime > time.time() ):
+                    await asyncio.sleep(functionEndTime - time.time())
+                    print(functionEndTime - time.time())                
+
             return render_template("/index.html")
     else:
+
+        if (functionEndTime > time.time() ):
+                await asyncio.sleep(functionEndTime - time.time())
+                print(functionEndTime - time.time())    
         return render_template("/index.html")
 
 
 @app.route("/passwordRequest", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
-def passwordValidation():
+async def passwordValidation():
+    functionEndTime = round(time.time()) + 1
+
     password  = request.form.get("password")
     errorCode = checkInput(password)
-    print(errorCode)
+
+    if (functionEndTime < time.time() ):
+        await asyncio.sleep(functionEndTime - time.time())
+
     return(str(errorCode))
 
 
 
 if __name__ == "__main__":
     app.config["TEMPLATES_AUTO_RELOAD"] = True
-    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+    app.config["SEND_FILE_MAX_AGE_async defAULT"] = 0
     app.run(debug=True, host="0.0.0.0", port=5000)
