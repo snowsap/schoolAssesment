@@ -6,7 +6,15 @@ import user_management as dbHandler
 from enum import Enum
 import time
 import asyncio
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import serialization, hashes
 
+
+#65537 is used specifically because it is secure and a simple prime (2^16 + 1) and key size 2084 = 2^11 
+global privateKey
+privateKey = rsa.generate_private_key(public_exponent=65537 , key_size=2084)
+global publicKey
+publicKey = privateKey.public_key()
 
 app = Flask(__name__)
 
@@ -32,6 +40,13 @@ async def sanitiseInput(input):
         else: 
             output.append(inputList[i])
     return "".join(output)
+
+
+def decrypt(encryptedInfo):
+    return privateKey.decrypt( encryptedInfo, padding.OAEP( mgf=padding.MGF1( algorithm = hashes.SHA256() ), algorithm = hashes.SHA256(), label = False)
+                                   
+    )
+
 
 
 
@@ -94,6 +109,11 @@ async def checkInput(password):
     
     return returnerror.hasNoError
 
+@app.route("/PublicKey", methods=["GET"])
+async def getPublicKey():
+    return publicKey
+
+
 @app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 async def addFeedback():
     functionEndTime = round(time.time()) + 1
@@ -101,8 +121,8 @@ async def addFeedback():
         url = request.args.get("url", "")
         
         if (functionEndTime > time.time() ):
-                await asyncio.sleep(functionEndTime - time.time())
-                print(functionEndTime - time.time())        
+            await asyncio.sleep(functionEndTime - time.time())
+                       
         return redirect(url, code=302)
     if request.method == "POST":
         feedback = request.form["feedback"]
@@ -110,15 +130,15 @@ async def addFeedback():
         dbHandler.listFeedback()
 
         if (functionEndTime > time.time() ):
-                await asyncio.sleep(functionEndTime - time.time())
-                print(functionEndTime - time.time())        
+            await asyncio.sleep(functionEndTime - time.time())
+                       
         return render_template("/success.html", state=True, value="Back")
     else:
         dbHandler.listFeedback()
 
         if (functionEndTime > time.time() ):
-                await asyncio.sleep(functionEndTime - time.time())
-                print(functionEndTime - time.time())        
+            await asyncio.sleep(functionEndTime - time.time())
+                       
         return render_template("/success.html", state=True, value="Back")
 
 
@@ -131,8 +151,8 @@ async def signup():
         url = request.args.get("url", "")
 
         if (functionEndTime > time.time() ):
-                await asyncio.sleep(functionEndTime - time.time())
-                print(functionEndTime - time.time())            
+            await asyncio.sleep(functionEndTime - time.time())
+                           
         
         return redirect(url, code=302)
     if request.method == "POST":
@@ -146,14 +166,12 @@ async def signup():
         dbHandler.insertUser(username, password, DoB)
 
         if (functionEndTime > time.time() ):
-                await asyncio.sleep(functionEndTime - time.time())
-                print(functionEndTime - time.time())
+            await asyncio.sleep(functionEndTime - time.time())
         return render_template("/index.html")
     else:
 
         if (functionEndTime > time.time() ):
-                await asyncio.sleep(functionEndTime - time.time())
-                print(functionEndTime - time.time())
+            await asyncio.sleep(functionEndTime - time.time())
         return render_template("/signup.html")
 
 
@@ -167,8 +185,7 @@ async def home():
         url = request.args.get("url", "")
 
         if (functionEndTime > time.time() ):
-                await asyncio.sleep(functionEndTime - time.time())
-                print(functionEndTime - time.time())
+            await asyncio.sleep(functionEndTime - time.time())
         return redirect(url, code=302)
     if request.method == "POST":
         username = sanitiseInput(request.form["username"])
@@ -184,15 +201,15 @@ async def home():
         else:
 
             if (functionEndTime > time.time() ):
-                    await asyncio.sleep(functionEndTime - time.time())
-                    print(functionEndTime - time.time())                
+                await asyncio.sleep(functionEndTime - time.time())
+                                   
 
             return render_template("/index.html")
     else:
 
         if (functionEndTime > time.time() ):
-                await asyncio.sleep(functionEndTime - time.time())
-                print(functionEndTime - time.time())    
+            await asyncio.sleep(functionEndTime - time.time())
+                   
         return render_template("/index.html")
 
 
