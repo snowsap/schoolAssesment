@@ -5,8 +5,6 @@ from flask import redirect
 import user_management as dbHandler
 from enum import Enum
 
-# Code snippet for logging a message
-# app.logger.critical("message")
 
 app = Flask(__name__)
 
@@ -33,7 +31,9 @@ def sanitiseInput(input):
             output.append(inputList[i])
     return "".join(output)
 
-class returnErorr(Enum):
+
+
+class returnerror(Enum):
     hasNoError = 0
     noLowerCase = 1
     noUpperCase = 2
@@ -42,13 +42,14 @@ class returnErorr(Enum):
  
 def checkInput(password):
 
-    inputList = list(password)
+    print(password)
+
+    inputList = list(str(password))
     lastId = False
     
     hasLowerCase = False
     hasUpperCase = False
     hasSpecialCharacter = False
-    repeatedCharacter = False
     repeat = 0
     
     for i in range(0, len(password)):
@@ -74,22 +75,22 @@ def checkInput(password):
         if lastId == tempID:
             repeat += 1
             if repeat > 2:
-                return returnErorr.continuousLetters
+                return returnerror.continuousLetters
         else:
             repeat = 0
 
         lastId = tempID
 
     if (not hasLowerCase):
-        return returnErorr.noLowerCase
+        return returnerror.noLowerCase
     
     if (not hasUpperCase):
-        return returnErorr.noUpperCase
+        return returnerror.noUpperCase
     
     if (not hasSpecialCharacter):
-        return returnErorr.noSpecialCase
+        return returnerror.noSpecialCase
     
-    return returnErorr.hasNoError
+    return returnerror.hasNoError
 
 @app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 def addFeedback():
@@ -113,7 +114,11 @@ def signup():
         return redirect(url, code=302)
     if request.method == "POST":
         username = sanitiseInput(request.form["username"])
-        password = sanitiseInput(request.form["password"])
+        rawpassword = request.form["password"]
+        print(str(checkInput(rawpassword)))
+        if(str(checkInput(rawpassword)) != 'returnerror.hasNoError'):
+            return render_template("/signup.html")
+        password = sanitiseInput(rawpassword)
         DoB = request.form["dob"]
         dbHandler.insertUser(username, password, DoB)
         return render_template("/index.html")
@@ -138,6 +143,15 @@ def home():
             return render_template("/index.html")
     else:
         return render_template("/index.html")
+
+
+@app.route("/passwordRequest", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
+def passwordValidation():
+    password  = request.form.get("password")
+    errorCode = checkInput(password)
+    print(errorCode)
+    return(str(errorCode))
+
 
 
 if __name__ == "__main__":

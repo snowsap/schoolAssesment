@@ -4,7 +4,7 @@ import random
 
 
 def insertUser(username, password, DoB):
-    con = sql.connect("database_files/database.db")
+    con = sql.connect("The_Unsecure_PWA-main/database_files/database.db")
     cur = con.cursor()
     cur.execute(
         "INSERT INTO users (username,password,dateOfBirth) VALUES (?,?,?)",
@@ -15,7 +15,7 @@ def insertUser(username, password, DoB):
 
 
 def retrieveUsers(username, password):
-    con = sql.connect("database_files/database.db")
+    con = sql.connect("The_Unsecure_PWA-main/database_files/database.db")
     cur = con.cursor()
     cur.execute(f"SELECT * FROM users WHERE username = '{username}'")
     if cur.fetchone() == None:
@@ -24,10 +24,10 @@ def retrieveUsers(username, password):
     else:
         cur.execute(f"SELECT * FROM users WHERE password = '{password}'")
         # Plain text log of visitor count as requested by Unsecure PWA management
-        with open("visitor_log.txt", "r") as file:
+        with open("The_Unsecure_PWA-main/visitor_log.txt", "r") as file:
             number = int(file.read().strip())
             number += 1
-        with open("visitor_log.txt", "w") as file:
+        with open("The_Unsecure_PWA-main/visitor_log.txt", "w") as file:
             file.write(str(number))
         # Simulate response time of heavy app for testing purposes
         time.sleep(random.randint(80, 90) / 1000)
@@ -40,7 +40,7 @@ def retrieveUsers(username, password):
 
 
 def insertFeedback(feedback):
-    con = sql.connect("database_files/database.db")
+    con = sql.connect("The_Unsecure_PWA-main/database_files/database.db")
     cur = con.cursor()
     cur.execute(f"INSERT INTO feedback (feedback) VALUES ('{feedback}')")
     con.commit()
@@ -48,7 +48,7 @@ def insertFeedback(feedback):
 
 
 def listFeedback():
-    con = sql.connect("database_files/database.db")
+    con = sql.connect("The_Unsecure_PWA-main/database_files/database.db")
     cur = con.cursor()
     data = cur.execute("SELECT * FROM feedback").fetchall()
     con.close()
