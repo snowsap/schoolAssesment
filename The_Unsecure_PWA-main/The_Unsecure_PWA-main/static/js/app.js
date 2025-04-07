@@ -1,11 +1,7 @@
-const forge = require("node-forge");
-
-// for reasoning of numbers look at the python encryption function but in short dont touch
 let pair = forge.pki.rsa.generateKeyPair({bits : 2048, e: 0x10001 })
 
 const publicKey = pair.publicKey
 const privKey = pair.privateKey
-
 
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
@@ -16,68 +12,99 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-function checkPassword() {
-
-  var response = encryptedXMLPostRequest(xhttp.send("password=" + document.getElementById("passwordSignup").value), "/passwordRequest")
-  if (response === "returnerror.hasNoError") {
-    document.forms["signupForm"].submit();
-  }
-  else {
-    alert(response)
-    }
-  }
-
 function encryptClient(messageToEncrypt) {
   return publicKey.encrypt(messageToEncrypt, "RSA-OAEP", {md: forge.md.sha256.create() });
 }
 
-function decryptClient(messageToDecrypt) {
-  return decrypted = privateKey.decrypt(forge.util.hexToBytes(messageToDecrypt), "RSA-OAEP", { md: forge.md.sha256.create() }) 
+function decryptClient(encryptedData, privateKey) {
+  if (!encryptedData || encryptedData.length === 0) {
+    console.error('missing info ');
+    return;
+  }
+  let decodedData = forge.util.decode64(encryptedData);
+  let decryptedData = forge.rsa.decrypt(privateKey, decodedData);
+  return decryptedData;
 }
 
 function encryptServer(messageToEncrypt) {
-  const publicKey = encryptedXMLGetRequest('/PublicKey');
-  return publicKey.encrypt(messageToEncrypt, "RSA-OAEP", { md: forge.md.sha256.create() });
+  return encryptedXMLGetRequest('/PublicKey').then(function(pem) {
+    let pubKey = forge.pki.publicKeyFromPem(pem);   
+    return forge.util.encode64(pubKey.encrypt(messageToEncrypt, "RSA-OAEP", { md: forge.md.sha256.create() }));
+  });
 }
 
-async function encryptAndSendForm(id, publicKey, address) {
-
+async function encryptAndSendForm(id, keyUrl, address) {
   let form = document.getElementById(id);
   let formData = new FormData(form);
+  formData.append("publicKey=", publicKey)
   let formDataObject = {};
-  formData.forEach((value, key) => {
-    formDataObject[key] = value;
-  });
-  
-
-  encryptedXMLPostRequest(publicKey.encrypt(formDataObject[i], "RSA-OAEP", { md: forge.md.sha256.create() }), address)
+  formData.forEach((value, i) => {
+    formDataObject[i] = value; });
+  let jsonData = JSON.stringify(formDataObject);
+  let pem = await encryptedXMLGetRequest(keyUrl);
+  let pubKey = forge.pki.publicKeyFromPem(pem);
+  let encData = pubKey.encrypt(jsonData, "RSA-OAEP", { md: forge.md.sha256.create() });
+  let response = await encryptedXMLPostRequest("encryptedData=" + encData, address);
+  return decryptClient(response);
 }
 
 function encryptedXMLGetRequest(address) {
+  return new Promise(function (resolve) {
+    let xhttp = new XMLHttpRequest();
+    xhttp.open("GET", address, true);
+    xhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+    xhttp.onreadystatechange = function () {
+      if (xhttp.readyState === 4 && xhttp.status === 200) {
+        resolve(xhttp.responseText);
+      }
+    };
+    xhttp.send();
+  });
+}
 
-  var xhttp = new XMLHttpRequest();
-  xhttp.open(typeOfRequest, address, true)
-  xhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded")
-  xhttp.onreadystatechange = function() {
-    if (xhttp.readyState === 4 && xhttp.status === 200) { 
-      return decryptClient(xhttp.responseText)
-    }
-  }
-} 
+function encryptedXMLPostRequest(dataName, data, address) {
+  return new Promise((resolve, reject) => {
+    let xhttp = new XMLHttpRequest();
+    xhttp.open("POST", address, true);
+    encryptServer(data).then(encryptedData => {
+      let pem = forge.pki.publicKeyToPem(publicKey);
+      let formData = new FormData();
+      formData.append("publicKey", pem);
+      formData.append(dataName, encryptedData);
 
-function encryptedXMLPostRequest(valuesToPass, address) {
-  encryptedValueToPass = encryptServer(valuesToPass)
-  var xhttp = new XMLHttpRequest();
-  xhttp.open(typeOfRequest, address, true)
-  xhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded")
-  xhttp.onreadystatechange = function() {
-    if (xhttp.readyState === 4 && xhttp.status === 200) { 
-      return decryptClient(xhttp.responseText)
+      xhttp.onreadystatechange = function () {
+        if (xhttp.readyState === 4) {
+          if (xhttp.status === 200) {
+            resolve(xhttp.responseText);  
+          } else {
+            reject("Request failed with status: " + xhttp.status);
+          }
+        }
+      };
+      xhttp.send(formData);
+    }).catch(error => {
+      reject(error);
+    });
+  });
+}
+
+async function checkPassword() {
+  let password = document.getElementById("passwordSignup").value;
+  try {
+    let response = await encryptedXMLPostRequest("password", password, "/passwordRequest");
+    console.log(response);
+    if (response === "returnerror.hasNoError") {
+      document.forms["signupForm"].submit();
+    } else {
+      alert(response);
     }
+  } catch (error) {
+    console.error("Error:", error);
   }
 }
 
-document.getElementById("signupForm").addEventListener("submit", async (event) => {
-  event.preventDefault(); 
-  await encryptAndSendEntireForm("signupForm", encryptedXMLGetRequest('/PublicKey'), );
+document.getElementById("signupForm").addEventListener("submit", async function (event) {
+  event.preventDefault();
+  document.getElementById("result").innerHTML = result;
+  location.href(result)
 });

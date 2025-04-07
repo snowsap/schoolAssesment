@@ -8,28 +8,28 @@ import time
 import asyncio
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.backends import default_backend
+import base64
 
 
-#65537 is used specifically because it is secure and a simple prime (2^16 + 1) and key size 2084 = 2^11 
+# 65537 is used specifically because it is secure and a simple prime (2^16 + 1.5) and key size 2048 = 2^11 
 global privateKey
-privateKey = rsa.generate_private_key(public_exponent=65537 , key_size=2084)
+privateKey = rsa.generate_private_key(public_exponent=65537 , key_size=2048)
 global publicKey
 publicKey = privateKey.public_key()
 
 app = Flask(__name__)
 
-pecialCharacterunordedMap = dict()
+specialCharacterunordedMap = dict()
 specialCharacterunordedMap = {
-'"' : "&quot;", 
-"'" : "&apos;", 
-"&" : "&amp;",
-"<" : "&lt;", 
-">" : "&gt;",
-"-" : "&#45;"}
+    '"' : "&quot;", 
+    "'" : "&apos;", 
+    "&" : "&amp;",
+    "<" : "&lt;",  
+    ">" : "&gt;",
+    "-" : "&#45;"
+}
 
 async def sanitiseInput(input):
-    
     inputList = list(str(input))
     output = list()
 
@@ -42,30 +42,23 @@ async def sanitiseInput(input):
             output.append(inputList[i])
     return "".join(output)
 
-
-
-
 class returnerror(Enum):
     hasNoError = 0
     noLowerCase = 1
     noUpperCase = 2
     noSpecialCase = 3
     continuousLetters = 4
- 
+
 async def checkInput(password):
-
-    print(password)
-
     inputList = list(str(password))
     lastId = False
-    
+
     hasLowerCase = False
     hasUpperCase = False
     hasSpecialCharacter = False
     repeat = 0
-    
+
     for i in range(0, len(password)):
-        
         upperCharacter = False
         lowerCharacter = False
         
@@ -106,26 +99,31 @@ async def checkInput(password):
 
 @app.route("/PublicKey", methods=["GET"])
 def getPublicKeyServer():
-    return publicKey.public_bytes()
+    return publicKey.public_bytes(encoding=serialization.Encoding.PEM , format=serialization.PublicFormat.SubjectPublicKeyInfo)
 
 def decryptServer(encryptedInfo):
-    return privateKey.decrypt( encryptedInfo, padding.OAEP( mgf=padding.MGF1( algorithm = hashes.SHA256() ), algorithm = hashes.SHA256(), label = False))
+    encryptedInfo = base64.b64decode(encryptedInfo)
+    print(encryptedInfo)
+    return privateKey.decrypt( encryptedInfo, padding.OAEP( mgf=padding.MGF1( algorithm = hashes.SHA256() ), algorithm = hashes.SHA256(), label = None))
 
-
-def encryptClient():
-    pass
-
-def encryptClient():
-    pass
+def encryptClient(key, infomation):
+    if isinstance(key, str):
+        key = key.encode('utf-8')
+    
+    key = serialization.load_pem_public_key(key)
+    infomation_str = str(infomation)  
+    infomation_bytes = infomation_str.encode('utf-8') 
+    
+    return key.encrypt(infomation_bytes, padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
 
 
 @app.route("/success.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 async def addFeedback():
-    functionEndTime = round(time.time()) + 1
+    functionEndTime = round(time.time()) + 1.5
     if request.method == "GET" and request.args.get("url"):
         url = request.args.get("url", "")
         
-        if (functionEndTime > time.time() ):
+        if (functionEndTime > time.time()):
             await asyncio.sleep(functionEndTime - time.time())
                        
         return redirect(url, code=302)
@@ -134,107 +132,106 @@ async def addFeedback():
         dbHandler.insertFeedback(feedback)
         dbHandler.listFeedback()
 
-        if (functionEndTime > time.time() ):
+        if (functionEndTime > time.time()):
             await asyncio.sleep(functionEndTime - time.time())
                        
         return render_template("/success.html", state=True, value="Back")
     else:
         dbHandler.listFeedback()
 
-        if (functionEndTime > time.time() ):
+        if (functionEndTime > time.time()):
             await asyncio.sleep(functionEndTime - time.time())
                        
         return render_template("/success.html", state=True, value="Back")
 
-
 @app.route("/signup.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 async def signup():
-
-    functionEndTime = round(time.time()) + 1
+    functionEndTime = round(time.time()) + 1.5
 
     if request.method == "GET" and request.args.get("url"):
         url = request.args.get("url", "")
 
-        if (functionEndTime > time.time() ):
+        if (functionEndTime > time.time()):
             await asyncio.sleep(functionEndTime - time.time())
                            
-        
         return redirect(url, code=302)
     if request.method == "POST":
-        username = sanitiseInput(request.form["username"])
-        rawpassword = request.form["password"]
-        print(str(checkInput(rawpassword)))
-        if(str(checkInput(rawpassword)) != 'returnerror.hasNoError'):
+        rawUsername = await sanitiseInput(request.form.get("username"))  
+        username = decryptServer(rawUsername)
+        rawPassword = request.form.get("password")
+        rawPassword = decryptServer(rawPassword)
+        
+        if(str(await checkInput(rawPassword)) != 'returnerror.hasNoError'):  
             return render_template("/signup.html")
-        password = sanitiseInput(rawpassword)
-        DoB = request.form["dob"]
+        
+        password = await sanitiseInput(rawPassword)  
+        rawDoB = request.form.get("dob")
+        DoB = decryptServer(rawDoB)
         dbHandler.insertUser(username, password, DoB)
 
-        if (functionEndTime > time.time() ):
+        if (functionEndTime > time.time()):
             await asyncio.sleep(functionEndTime - time.time())
         return render_template("/index.html")
     else:
-
-        if (functionEndTime > time.time() ):
+        if (functionEndTime > time.time()):
             await asyncio.sleep(functionEndTime - time.time())
         return render_template("/signup.html")
-
 
 @app.route("/index.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 @app.route("/", methods=["POST", "GET"])
 async def home():
-
-    functionEndTime = round(time.time()) + 1
+    functionEndTime = round(time.time()) + 1.5
 
     if request.method == "GET" and request.args.get("url"):
         url = request.args.get("url", "")
 
-        if (functionEndTime > time.time() ):
+        if (functionEndTime > time.time()):
             await asyncio.sleep(functionEndTime - time.time())
         return redirect(url, code=302)
     if request.method == "POST":
-        username = sanitiseInput(request.form["username"])
-        password = sanitiseInput(request.form["password"])
+        rawUsername = sanitiseInput(request.form.get("username"))
+        rawPassword = sanitiseInput(request.form.get("password"))
+        username = decryptServer(rawUsername)
+        password = decryptServer(rawPassword)
         isLoggedIn = dbHandler.retrieveUsers(username, password)
         if isLoggedIn:
             dbHandler.listFeedback()
 
-            if (functionEndTime > time.time() ):
+            if (functionEndTime > time.time()):
                 await asyncio.sleep(functionEndTime - time.time())    
             
             return render_template("/success.html", value=username, state=isLoggedIn)
         else:
 
-            if (functionEndTime > time.time() ):
+            if (functionEndTime > time.time()):
                 await asyncio.sleep(functionEndTime - time.time())
                                    
-
             return render_template("/index.html")
     else:
 
-        if (functionEndTime > time.time() ):
+        if (functionEndTime > time.time()):
             await asyncio.sleep(functionEndTime - time.time())
                    
-        return render_template("/index.html")
 
+        return render_template("/index.html")
 
 @app.route("/passwordRequest", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 async def passwordValidation():
-    functionEndTime = round(time.time()) + 1
+    functionEndTime = round(time.time()) + 1.5
+    
+    password = decryptServer(request.form.get("password"))
+    public_key = request.form.get("publicKey")
 
-    password  = request.form.get("password")
-    errorCode = checkInput(password)
+    errorCode = await checkInput(password)
 
-    if (functionEndTime < time.time() ):
+    if (functionEndTime < time.time()):
         await asyncio.sleep(functionEndTime - time.time())
 
-    return(str(errorCode))
+    return str(errorCode)
 
 
 
 if __name__ == "__main__":
     app.config["TEMPLATES_AUTO_RELOAD"] = True
-    app.config["SEND_FILE_MAX_AGE_async defAULT"] = 0
+    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
     app.run(debug=True, host="0.0.0.0", port=5000)
-
-
