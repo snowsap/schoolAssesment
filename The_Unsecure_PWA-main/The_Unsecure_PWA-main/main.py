@@ -21,6 +21,7 @@ app = Flask(__name__)
 
 specialCharacterunordedMap = dict()
 specialCharacterunordedMap = {
+    "." : "&period;",
     '"' : "0", 
     "'" : "&apos;", 
     "&" : "&amp;",
