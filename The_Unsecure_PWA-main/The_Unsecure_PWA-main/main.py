@@ -21,7 +21,7 @@ app = Flask(__name__)
 
 specialCharacterunordedMap = dict()
 specialCharacterunordedMap = {
-    '"' : "&quot;", 
+    '"' : "0", 
     "'" : "&apos;", 
     "&" : "&amp;",
     "<" : "&lt;",  
@@ -103,7 +103,6 @@ def getPublicKeyServer():
 
 def decryptServer(encryptedInfo):
     encryptedInfo = base64.b64decode(encryptedInfo)
-    print(encryptedInfo)
     return privateKey.decrypt( encryptedInfo, padding.OAEP( mgf=padding.MGF1( algorithm = hashes.SHA256() ), algorithm = hashes.SHA256(), label = None))
 
 def encryptClient(key, infomation):
@@ -144,6 +143,10 @@ async def addFeedback():
                        
         return render_template("/success.html", state=True, value="Back")
 
+
+
+
+
 @app.route("/signup.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 async def signup():
     functionEndTime = round(time.time()) + 1.5
@@ -156,26 +159,39 @@ async def signup():
                            
         return redirect(url, code=302)
     if request.method == "POST":
-        rawUsername = await sanitiseInput(request.form.get("username"))  
-        username = decryptServer(rawUsername)
+
+        rawUsername =  request.form.get("username")
         rawPassword = request.form.get("password")
-        rawPassword = decryptServer(rawPassword)
-        
-        if(str(await checkInput(rawPassword)) != 'returnerror.hasNoError'):  
-            return render_template("/signup.html")
-        
-        password = await sanitiseInput(rawPassword)  
         rawDoB = request.form.get("dob")
+
+        username = await sanitiseInput(decryptServer(rawUsername))
+        password = await sanitiseInput(decryptServer(rawPassword))
         DoB = decryptServer(rawDoB)
+
+        
+        
+        if(str(await checkInput(rawPassword)) != 'returnerror.hasNoError'):
+            return "1"
+        
+        print(username + password)
         dbHandler.insertUser(username, password, DoB)
 
         if (functionEndTime > time.time()):
             await asyncio.sleep(functionEndTime - time.time())
-        return render_template("/index.html")
+
+            return "0"
+    
     else:
+    
         if (functionEndTime > time.time()):
             await asyncio.sleep(functionEndTime - time.time())
         return render_template("/signup.html")
+
+
+
+
+
+
 
 @app.route("/index.html", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 @app.route("/", methods=["POST", "GET"])
@@ -189,10 +205,11 @@ async def home():
             await asyncio.sleep(functionEndTime - time.time())
         return redirect(url, code=302)
     if request.method == "POST":
-        rawUsername = sanitiseInput(request.form.get("username"))
-        rawPassword = sanitiseInput(request.form.get("password"))
-        username = decryptServer(rawUsername)
-        password = decryptServer(rawPassword)
+        rawUsername = request.form.get("username")
+        rawPassword = request.form.get("password")
+        print(decryptServer(rawUsername))
+        username =  sanitiseInput(decryptServer(rawUsername))
+        password =  sanitiseInput(decryptServer(rawPassword))
         isLoggedIn = dbHandler.retrieveUsers(username, password)
         if isLoggedIn:
             dbHandler.listFeedback()
@@ -200,13 +217,13 @@ async def home():
             if (functionEndTime > time.time()):
                 await asyncio.sleep(functionEndTime - time.time())    
             
-            return render_template("/success.html", value=username, state=isLoggedIn)
+            return "0"
         else:
 
             if (functionEndTime > time.time()):
                 await asyncio.sleep(functionEndTime - time.time())
                                    
-            return render_template("/index.html")
+            return "1"
     else:
 
         if (functionEndTime > time.time()):
@@ -214,6 +231,7 @@ async def home():
                    
 
         return render_template("/index.html")
+
 
 @app.route("/passwordRequest", methods=["POST", "GET", "PUT", "PATCH", "DELETE"])
 async def passwordValidation():

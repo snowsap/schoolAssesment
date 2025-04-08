@@ -22,8 +22,7 @@ function decryptClient(encryptedData, privateKey) {
     return;
   }
   let decodedData = forge.util.decode64(encryptedData);
-  let decryptedData = forge.rsa.decrypt(privateKey, decodedData);
-  return decryptedData;
+  return privateKey.decrypt(decodedData, "RSA-OAEP", { md: forge.md.sha256.create() });
 }
 
 function encryptServer(messageToEncrypt) {
@@ -33,20 +32,6 @@ function encryptServer(messageToEncrypt) {
   });
 }
 
-async function encryptAndSendForm(id, keyUrl, address) {
-  let form = document.getElementById(id);
-  let formData = new FormData(form);
-  formData.append("publicKey=", publicKey)
-  let formDataObject = {};
-  formData.forEach((value, i) => {
-    formDataObject[i] = value; });
-  let jsonData = JSON.stringify(formDataObject);
-  let pem = await encryptedXMLGetRequest(keyUrl);
-  let pubKey = forge.pki.publicKeyFromPem(pem);
-  let encData = pubKey.encrypt(jsonData, "RSA-OAEP", { md: forge.md.sha256.create() });
-  let response = await encryptedXMLPostRequest("encryptedData=" + encData, address);
-  return decryptClient(response);
-}
 
 function encryptedXMLGetRequest(address) {
   return new Promise(function (resolve) {
@@ -77,7 +62,7 @@ function encryptedXMLPostRequest(dataName, data, address) {
           if (xhttp.status === 200) {
             resolve(xhttp.responseText);  
           } else {
-            reject("Request failed with status: " + xhttp.status);
+            reject("Request failed with  " + xhttp.status);
           }
         }
       };
@@ -94,7 +79,7 @@ async function checkPassword() {
     let response = await encryptedXMLPostRequest("password", password, "/passwordRequest");
     console.log(response);
     if (response === "returnerror.hasNoError") {
-      document.forms["signupForm"].submit();
+      signInPage();
     } else {
       alert(response);
     }
@@ -103,8 +88,65 @@ async function checkPassword() {
   }
 }
 
-document.getElementById("signupForm").addEventListener("submit", async function (event) {
-  event.preventDefault();
-  document.getElementById("result").innerHTML = result;
-  location.href(result)
-});
+async function signInPage() {
+
+  let pem = forge.pki.publicKeyToPem(publicKey);
+  let rawPassword = document.getElementById("passwordSignup").value;
+  let rawUsername = document.getElementById("usernameSignup").value;
+  let rawDob = document.getElementById("dobSignup").value
+
+  let password = await encryptServer(rawPassword);
+  let username = await encryptServer(rawUsername);
+  let dob = await encryptServer(rawDob)
+
+  let formData = new FormData();
+  formData.append("password", password);
+  formData.append("username", username);
+  formData.append("dob", dob)
+  formData.append("publicKey", pem);
+
+  let xhttp = new XMLHttpRequest();
+  xhttp.open("POST", "/signup.html", true);
+  xhttp.onreadystatechange = function () {
+    if (xhttp.readyState === 4 && xhttp.status === 200) {
+      let answer = xhttp.responseText;
+      if (answer == "0") {
+        window.location.replace("/index.html")
+      }
+      else {
+        window.location.replace("/signup.html")
+      }
+    }
+  };
+  xhttp.send(formData);
+}
+
+async function logInPage() {
+
+  let pem = forge.pki.publicKeyToPem(publicKey);
+  let rawPassword = document.getElementById("password").value;
+  let rawUsername = document.getElementById("username").value;
+
+  let password = await encryptServer(rawPassword);
+  let username = await encryptServer(rawUsername);
+
+  let formData = new FormData();
+  formData.append("password", password);
+  formData.append("username", username);
+  formData.append("publicKey", pem);
+
+  let xhttp = new XMLHttpRequest();
+  xhttp.open("POST", "/index.html", true);
+  xhttp.onreadystatechange = function () {
+    if (xhttp.readyState === 4 && xhttp.status === 200) {
+      let answer = xhttp.responseText;
+      if (answer == "0") {
+        window.location.replace("/success.html")
+      }
+      else {
+        window.location.replace("/index.html")
+      }
+    }
+  };
+  xhttp.send(formData);
+}
